@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get-FCHBAPathState — FC HBA Path Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg:         #0d0f14;
+    --bg2:        #12151c;
+    --bg3:        #181c26;
+    --border:     #252a38;
+    --border2:    #2e3448;
+    --text:       #c8cfe0;
+    --text-dim:   #5a6480;
+    --text-head:  #e8edf8;
+    --accent:     #3d9cf0;
+    --accent2:    #5ab4ff;
+    --green:      #3dd68c;
+    --green-bg:   rgba(61,214,140,.08);
+    --green-bdr:  rgba(61,214,140,.25);
+    --yellow:     #f0c040;
+    --yellow-bg:  rgba(240,192,64,.08);
+    --yellow-bdr: rgba(240,192,64,.25);
+    --red:        #f05060;
+    --red-bg:     rgba(240,80,96,.08);
+    --red-bdr:    rgba(240,80,96,.30);
+    --magenta:    #c080f0;
+    --mono:       'JetBrains Mono', monospace;
+    --sans:       'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border2);
+    padding: 28px 40px 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--magenta) 50%, var(--green) 100%);
+  }
+  .header-left { display: flex; flex-direction: column; gap: 6px; }
+  .header-tool {
+    font-family: var(--sans);
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-head);
+    letter-spacing: -0.5px;
+  }
+  .header-tool span { color: var(--accent2); }
+  .header-subtitle {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+  .header-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .badge.v { color: var(--accent); border-color: rgba(61,156,240,.3); background: rgba(61,156,240,.06); }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    display: flex;
+    gap: 12px;
+    padding: 16px 40px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 18px;
+    min-width: 110px;
+  }
+  .stat-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.8px; text-transform: uppercase; }
+  .stat-value { font-size: 22px; font-weight: 700; font-family: var(--sans); color: var(--text-head); }
+  .stat-card.ok  .stat-value { color: var(--green); }
+  .stat-card.warn .stat-value { color: var(--yellow); }
+  .stat-card.crit .stat-value { color: var(--red); }
+
+  /* ── Status banner ── */
+  .status-banner {
+    margin: 20px 40px 0;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-banner.ok   { background: var(--green-bg);  border: 1px solid var(--green-bdr);  color: var(--green); }
+  .status-banner.crit { background: var(--red-bg);    border: 1px solid var(--red-bdr);    color: var(--red); }
+
+  /* ── Main content ── */
+  .main { padding: 20px 40px 0; }
+
+  /* ── Cluster section ── */
+  .cluster-block { margin-bottom: 32px; }
+  .cluster-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .cluster-name {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--magenta);
+    letter-spacing: 0.3px;
+  }
+  .cluster-pill {
+    font-size: 10px;
+    background: rgba(192,128,240,.1);
+    border: 1px solid rgba(192,128,240,.25);
+    color: var(--magenta);
+    border-radius: 20px;
+    padding: 2px 8px;
+  }
+  .cluster-pill.ok   { background: var(--green-bg);  border-color: var(--green-bdr);  color: var(--green); }
+  .cluster-pill.crit { background: var(--red-bg);    border-color: var(--red-bdr);    color: var(--red); }
+
+  /* ── Table ── */
+  .hba-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .hba-table thead tr {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border2);
+  }
+  .hba-table th {
+    padding: 9px 14px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .hba-table th.num { text-align: right; }
+  .hba-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  .hba-table tbody tr:last-child { border-bottom: none; }
+  .hba-table tbody tr:hover { background: rgba(255,255,255,.025); }
+  .hba-table td {
+    padding: 9px 14px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .hba-table td.num { text-align: right; font-weight: 600; }
+
+  /* Row states */
+  .row-ok     { background: rgba(61,214,140,.03); }
+  .row-warn   { background: rgba(240,192,64,.04); }
+  .row-dead   { background: rgba(240,80,96,.05); }
+  .row-nopath { background: rgba(240,160,64,.04); }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .chip.active  { background: var(--green-bg);  border: 1px solid var(--green-bdr);  color: var(--green); }
+  .chip.dead    { background: var(--red-bg);    border: 1px solid var(--red-bdr);    color: var(--red); }
+  .chip.standby { background: var(--yellow-bg); border: 1px solid var(--yellow-bdr); color: var(--yellow); }
+  .chip.zero    { background: var(--bg3);       border: 1px solid var(--border);     color: var(--text-dim); }
+
+  .host-cell { display: flex; align-items: center; gap: 8px; }
+  .host-dot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .host-dot.ok   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .host-dot.warn { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+  .host-dot.dead { background: var(--red); box-shadow: 0 0 6px var(--red); }
+
+  .hba-device {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    background: rgba(61,156,240,.08);
+    border: 1px solid rgba(61,156,240,.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 24px 40px 0;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    align-items: center;
+  }
+  .legend-title { font-weight: 600; color: var(--text-dim); letter-spacing: 0.5px; text-transform: uppercase; font-size: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+
+  /* ── Footer ── */
+  .page-footer {
+    margin: 32px 40px 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .page-footer a { color: var(--accent); text-decoration: none; }
+  .page-footer a:hover { text-decoration: underline; }
+
+  /* ── Scrollable table wrapper for narrow viewports ── */
+  .table-wrap { overflow-x: auto; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="header-left">
+    <div class="header-tool">Get-FC<span>HBAPathState</span></div>
+    <div class="header-subtitle">Fibre Channel HBA Path State Report &nbsp;·&nbsp; VMware vCenter</div>
+  </div>
+  <div class="header-meta">
+    <span class="badge v">v2.5</span>
+    <span class="badge" id="ts">Generated: —</span>
+    <span class="badge" id="vcenter-badge">vCenter: vcenter.example.local</span>
+  </div>
+</header>
+
+<!-- Summary bar -->
+<div class="summary-bar">
+  <div class="stat-card">
+    <span class="stat-label">Clusters</span>
+    <span class="stat-value" id="s-clusters">2</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Hosts</span>
+    <span class="stat-value" id="s-hosts">6</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">HBAs checked</span>
+    <span class="stat-value" id="s-hbas">12</span>
+  </div>
+  <div class="stat-card ok">
+    <span class="stat-label">Healthy</span>
+    <span class="stat-value" id="s-healthy">10</span>
+  </div>
+  <div class="stat-card crit">
+    <span class="stat-label">Dead paths</span>
+    <span class="stat-value" id="s-dead">2</span>
+  </div>
+</div>
+
+<!-- Status banner -->
+<div class="status-banner crit" id="overall-status">
+  ⚠ 2 HBA(s) have dead paths — investigate immediately.
+</div>
+
+<!-- Main tables -->
+<div class="main" id="report-body">
+
+  <!-- CLUSTER A -->
+  <div class="cluster-block">
+    <div class="cluster-heading">
+      <span class="cluster-name">◈ Cluster-Production</span>
+      <span class="cluster-pill crit">1 dead path</span>
+    </div>
+    <div class="table-wrap">
+    <table class="hba-table">
+      <thead>
+        <tr>
+          <th>VMHost</th>
+          <th>HBA</th>
+          <th class="num">Active</th>
+          <th class="num">Dead</th>
+          <th class="num">Standby</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="row-ok">
+          <td><div class="host-cell"><div class="host-dot ok"></div>esxi01.prod.local</div></td>
+          <td><span class="hba-device">vmhba4</span></td>
+          <td class="num"><span class="chip active">8</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip active">✓ Healthy</span></td>
+        </tr>
+        <tr class="row-ok">
+          <td><div class="host-cell"><div class="host-dot ok"></div>esxi01.prod.local</div></td>
+          <td><span class="hba-device">vmhba5</span></td>
+          <td class="num"><span class="chip active">8</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip active">✓ Healthy</span></td>
+        </tr>
+        <tr class="row-dead">
+          <td><div class="host-cell"><div class="host-dot dead"></div>esxi02.prod.local</div></td>
+          <td><span class="hba-device">vmhba4</span></td>
+          <td class="num"><span class="chip active">6</span></td>
+          <td class="num"><span class="chip dead">2</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip dead">✕ Dead paths</span></td>
+        </tr>
+        <tr class="row-ok">
+          <td><div class="host-cell"><div class="host-dot ok"></div>esxi02.prod.local</div></td>
+          <td><span class="hba-device">vmhba5</span></td>
+          <td class="num"><span class="chip active">8</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip active">✓ Healthy</span></td>
+        </tr>
+        <tr class="row-ok">
+          <td><div class="host-cell"><div class="host-dot ok"></div>esxi03.prod.local</div></td>
+          <td><span class="hba-device">vmhba4</span></td>
+          <td class="num"><span class="chip active">8</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip active">✓ Healthy</span></td>
+        </tr>
+        <tr class="row-ok">
+          <td><div class="host-cell"><div class="host-dot ok"></div>esxi03.prod.local</div></td>
+          <td><span class="hba-device">vmhba5</span></td>
+          <td class="num"><span class="chip active">8</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip active">✓ Healthy</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- CLUSTER B -->
+  <div class="cluster-block">
+    <div class="cluster-heading">
+      <span class="cluster-name">◈ Cluster-DR</span>
+      <span class="cluster-pill crit">1 dead path</span>
+    </div>
+    <div class="table-wrap">
+    <table class="hba-table">
+      <thead>
+        <tr>
+          <th>VMHost</th>
+          <th>HBA</th>
+          <th class="num">Active</th>
+          <th class="num">Dead</th>
+          <th class="num">Standby</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="row-ok">
+          <td><div class="host-cell"><div class="host-dot ok"></div>esxi04.dr.local</div></td>
+          <td><span class="hba-device">vmhba4</span></td>
+          <td class="num"><span class="chip active">8</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip active">✓ Healthy</span></td>
+        </tr>
+        <tr class="row-warn">
+          <td><div class="host-cell"><div class="host-dot warn"></div>esxi04.dr.local</div></td>
+          <td><span class="hba-device">vmhba5</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip standby">4</span></td>
+          <td><span class="chip standby">⚑ Standby only</span></td>
+        </tr>
+        <tr class="row-ok">
+          <td><div class="host-cell"><div class="host-dot ok"></div>esxi05.dr.local</div></td>
+          <td><span class="hba-device">vmhba4</span></td>
+          <td class="num"><span class="chip active">8</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip active">✓ Healthy</span></td>
+        </tr>
+        <tr class="row-dead">
+          <td><div class="host-cell"><div class="host-dot dead"></div>esxi05.dr.local</div></td>
+          <td><span class="hba-device">vmhba5</span></td>
+          <td class="num"><span class="chip active">4</span></td>
+          <td class="num"><span class="chip dead">4</span></td>
+          <td class="num"><span class="chip zero">0</span></td>
+          <td><span class="chip dead">✕ Dead paths</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- Legend -->
+<div class="legend">
+  <span class="legend-title">Legend</span>
+  <span class="legend-item"><span class="chip active">Active</span> Paths active and routing I/O</span>
+  <span class="legend-item"><span class="chip dead">Dead</span> Paths lost — immediate action required</span>
+  <span class="legend-item"><span class="chip standby">Standby</span> Paths available but not routing I/O</span>
+  <span class="legend-item"><span class="chip zero">0</span> No paths in this state</span>
+</div>
+
+<footer class="page-footer">
+  <span>Get-FCHBAPathState v2.5 &nbsp;·&nbsp; <a href="https://www.hollebollevsan.nl" target="_blank">hollebollevsan.nl</a> &nbsp;·&nbsp; Paul van Dieen</span>
+  <span id="footer-ts"></span>
+</footer>
+
+<script>
+  const now = new Date();
+  const fmt = now.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+  document.getElementById('ts').textContent = 'Generated: ' + fmt;
+  document.getElementById('footer-ts').textContent = fmt;
+</script>
+</body>
+</html>
