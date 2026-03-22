@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Get-FCHBAPathState - Reports Fibre Channel HBA path states across all ESXi hosts.
 
@@ -30,19 +30,25 @@
     .\Get-FCHBAPathState.ps1 -HTMLReport "C:\Reports\out.html"
 
 .NOTES
+    Script  : Get-FCHBAPathState.ps1
+    Version : 2.6
     Author  : Paul van Dieen
     Blog    : https://www.hollebollevsan.nl
-    Version : 2.6  (2026-03-19) - PS 5.1 compatibility fixes (UTF-8 BOM, [char] escaping);
-                                   Read-Host credential prompts replace Get-Credential dialog;
-                                   HTML function merged inline (single-file deployment).
-              2.5  (2026-03-19) - Added -HTMLReport parameter; dark-mode HTML report
-                                   auto-generated alongside CSV when -ExportPath is used.
-              2.4  (2026-03-06) - Per-cluster output tables with summaries.
-              2.3  (2026-03-06) - Colored console table, dynamic widths, legend.
-              2.2  (2026-03-06) - Runtime PowerCLI check for 13.x compatibility.
-              2.1  (2026-03-06) - Auto-detect FC HBAs; -HBAFilter parameter.
-              2.0  (2026-03-06) - Full rewrite with credential store, CSV export.
-              1.0  (initial)    - Original hardcoded script.
+    Date    : 2026-03-19
+
+    Changelog:
+    2.6  (2026-03-19) - PS 5.1 compatibility fixes (UTF-8 BOM, [char] escaping);
+                         Read-Host credential prompts replace Get-Credential dialog;
+                         HTML template converted from base64 to here-string;
+                         $ScriptMeta block added as single source of truth for branding.
+    2.5  (2026-03-19) - Added -HTMLReport parameter; dark-mode HTML report
+                         auto-generated alongside CSV when -ExportPath is used.
+    2.4  (2026-03-06) - Per-cluster output tables with summaries.
+    2.3  (2026-03-06) - Colored console table, dynamic widths, legend.
+    2.2  (2026-03-06) - Runtime PowerCLI check for 13.x compatibility.
+    2.1  (2026-03-06) - Auto-detect FC HBAs; -HBAFilter parameter.
+    2.0  (2026-03-06) - Full rewrite with credential store, CSV export.
+    1.0  (initial)    - Original hardcoded script.
 #>
 param(
     [string]$HBAFilter  = "",
@@ -50,6 +56,15 @@ param(
     [string]$HTMLReport = "",
     [switch]$Rescan
 )
+
+# --- Script metadata ---
+$ScriptMeta = @{
+    Name    = "Get-FCHBAPathState.ps1"
+    Version = "2.6"
+    Author  = "Paul van Dieen"
+    Blog    = "https://www.hollebollevsan.nl"
+    Date    = "2026-03-19"
+}
 
 # --- PowerCLI check ---
 $powercli = Get-Module -ListAvailable -Name VMware.VimAutomation.Core |
@@ -102,9 +117,76 @@ function New-FCHBAHTMLReport {
     $totalHealthy  = ($Results | Where-Object { $_.Dead -eq 0 }).Count
     $totalDead     = ($Results | Where-Object { $_.Dead -gt 0 }).Count
 
-    # Decode HTML template from base64 (avoids PS 5.1 parser issues with CSS braces)
-    $templateB64 = "PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CjxtZXRhIGNoYXJzZXQ9IlVURi04Ij4KPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiPgo8dGl0bGU+R2V0LUZDSEJBUGF0aFN0YXRlIC0gRkMgSEJBIFBhdGggUmVwb3J0PC90aXRsZT4KPHN0eWxlPgpAaW1wb3J0IHVybCgnaHR0cHM6Ly9mb250cy5nb29nbGVhcGlzLmNvbS9jc3MyP2ZhbWlseT1KZXRCcmFpbnMrTW9ubzp3Z2h0QDQwMDs2MDA7NzAwJmZhbWlseT1TeW5lOndnaHRANDAwOzYwMDs3MDA7ODAwJmRpc3BsYXk9c3dhcCcpOwo6cm9vdHstLWJnOiMwZDBmMTQ7LS1iZzI6IzEyMTUxYzstLWJnMzojMTgxYzI2Oy0tYm9yZGVyOiMyNTJhMzg7LS1ib3JkZXIyOiMyZTM0NDg7LS10ZXh0OiNjOGNmZTA7LS10ZXh0LWRpbTojNWE2NDgwOy0tdGV4dC1oZWFkOiNlOGVkZjg7LS1hY2NlbnQ6IzNkOWNmMDstLWFjY2VudDI6IzVhYjRmZjstLWdyZWVuOiMzZGQ2OGM7LS1ncmVlbi1iZzpyZ2JhKDYxLDIxNCwxNDAsLjA4KTstLWdyZWVuLWJkcjpyZ2JhKDYxLDIxNCwxNDAsLjI1KTstLXllbGxvdzojZjBjMDQwOy0teWVsbG93LWJnOnJnYmEoMjQwLDE5Miw2NCwuMDgpOy0teWVsbG93LWJkcjpyZ2JhKDI0MCwxOTIsNjQsLjI1KTstLXJlZDojZjA1MDYwOy0tcmVkLWJnOnJnYmEoMjQwLDgwLDk2LC4wOCk7LS1yZWQtYmRyOnJnYmEoMjQwLDgwLDk2LC4zMCk7LS1tYWdlbnRhOiNjMDgwZjA7LS1tb25vOidKZXRCcmFpbnMgTW9ubycsbW9ub3NwYWNlOy0tc2FuczonU3luZScsc2Fucy1zZXJpZn0KKiwqOjpiZWZvcmUsKjo6YWZ0ZXJ7Ym94LXNpemluZzpib3JkZXItYm94O21hcmdpbjowO3BhZGRpbmc6MH0KYm9keXtiYWNrZ3JvdW5kOnZhcigtLWJnKTtjb2xvcjp2YXIoLS10ZXh0KTtmb250LWZhbWlseTp2YXIoLS1tb25vKTtmb250LXNpemU6MTNweDtsaW5lLWhlaWdodDoxLjY7bWluLWhlaWdodDoxMDB2aDtwYWRkaW5nOjAgMCA2MHB4fQoucGFnZS1oZWFkZXJ7YmFja2dyb3VuZDp2YXIoLS1iZzIpO2JvcmRlci1ib3R0b206MXB4IHNvbGlkIHZhcigtLWJvcmRlcjIpO3BhZGRpbmc6MjhweCA0MHB4IDI0cHg7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmZsZXgtc3RhcnQ7anVzdGlmeS1jb250ZW50OnNwYWNlLWJldHdlZW47Z2FwOjI0cHg7cG9zaXRpb246cmVsYXRpdmU7b3ZlcmZsb3c6aGlkZGVufQoucGFnZS1oZWFkZXI6OmJlZm9yZXtjb250ZW50OicnO3Bvc2l0aW9uOmFic29sdXRlO3RvcDowO2xlZnQ6MDtyaWdodDowO2hlaWdodDoycHg7YmFja2dyb3VuZDpsaW5lYXItZ3JhZGllbnQoOTBkZWcsdmFyKC0tYWNjZW50KSAwJSx2YXIoLS1tYWdlbnRhKSA1MCUsdmFyKC0tZ3JlZW4pIDEwMCUpfQouaGVhZGVyLWxlZnR7ZGlzcGxheTpmbGV4O2ZsZXgtZGlyZWN0aW9uOmNvbHVtbjtnYXA6NnB4fQouaGVhZGVyLXRvb2x7Zm9udC1mYW1pbHk6dmFyKC0tc2Fucyk7Zm9udC1zaXplOjIycHg7Zm9udC13ZWlnaHQ6ODAwO2NvbG9yOnZhcigtLXRleHQtaGVhZCk7bGV0dGVyLXNwYWNpbmc6LTAuNXB4fQouaGVhZGVyLXRvb2wgc3Bhbntjb2xvcjp2YXIoLS1hY2NlbnQyKX0KLmhlYWRlci1zdWJ0aXRsZXtjb2xvcjp2YXIoLS10ZXh0LWRpbSk7Zm9udC1zaXplOjExcHg7bGV0dGVyLXNwYWNpbmc6MC41cHh9Ci5oZWFkZXItbWV0YXtkaXNwbGF5OmZsZXg7ZmxleC1kaXJlY3Rpb246Y29sdW1uO2FsaWduLWl0ZW1zOmZsZXgtZW5kO2dhcDo0cHg7Zm9udC1zaXplOjExcHg7Y29sb3I6dmFyKC0tdGV4dC1kaW0pfQouYmFkZ2V7ZGlzcGxheTppbmxpbmUtZmxleDthbGlnbi1pdGVtczpjZW50ZXI7Z2FwOjVweDtiYWNrZ3JvdW5kOnZhcigtLWJnMyk7Ym9yZGVyOjFweCBzb2xpZCB2YXIoLS1ib3JkZXIyKTtib3JkZXItcmFkaXVzOjRweDtwYWRkaW5nOjNweCA4cHg7Zm9udC1zaXplOjExcHg7Y29sb3I6dmFyKC0tdGV4dC1kaW0pfQouYmFkZ2Uudntjb2xvcjp2YXIoLS1hY2NlbnQpO2JvcmRlci1jb2xvcjpyZ2JhKDYxLDE1NiwyNDAsLjMpO2JhY2tncm91bmQ6cmdiYSg2MSwxNTYsMjQwLC4wNil9Ci5zdW1tYXJ5LWJhcntkaXNwbGF5OmZsZXg7Z2FwOjEycHg7cGFkZGluZzoxNnB4IDQwcHg7YmFja2dyb3VuZDp2YXIoLS1iZzIpO2JvcmRlci1ib3R0b206MXB4IHNvbGlkIHZhcigtLWJvcmRlcik7ZmxleC13cmFwOndyYXB9Ci5zdGF0LWNhcmR7ZGlzcGxheTpmbGV4O2ZsZXgtZGlyZWN0aW9uOmNvbHVtbjtnYXA6MnB4O2JhY2tncm91bmQ6dmFyKC0tYmczKTtib3JkZXI6MXB4IHNvbGlkIHZhcigtLWJvcmRlcik7Ym9yZGVyLXJhZGl1czo2cHg7cGFkZGluZzoxMHB4IDE4cHg7bWluLXdpZHRoOjExMHB4fQouc3RhdC1sYWJlbHtmb250LXNpemU6MTBweDtjb2xvcjp2YXIoLS10ZXh0LWRpbSk7bGV0dGVyLXNwYWNpbmc6MC44cHg7dGV4dC10cmFuc2Zvcm06dXBwZXJjYXNlfQouc3RhdC12YWx1ZXtmb250LXNpemU6MjJweDtmb250LXdlaWdodDo3MDA7Zm9udC1mYW1pbHk6dmFyKC0tc2Fucyk7Y29sb3I6dmFyKC0tdGV4dC1oZWFkKX0KLnN0YXQtY2FyZC5vayAuc3RhdC12YWx1ZXtjb2xvcjp2YXIoLS1ncmVlbil9LnN0YXQtY2FyZC5jcml0IC5zdGF0LXZhbHVle2NvbG9yOnZhcigtLXJlZCl9Ci5zdGF0dXMtYmFubmVye21hcmdpbjoyMHB4IDQwcHggMDtib3JkZXItcmFkaXVzOjZweDtwYWRkaW5nOjEwcHggMTZweDtmb250LXNpemU6MTJweDtmb250LXdlaWdodDo2MDA7ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtnYXA6OHB4fQouc3RhdHVzLWJhbm5lci5va3tiYWNrZ3JvdW5kOnZhcigtLWdyZWVuLWJnKTtib3JkZXI6MXB4IHNvbGlkIHZhcigtLWdyZWVuLWJkcik7Y29sb3I6dmFyKC0tZ3JlZW4pfQouc3RhdHVzLWJhbm5lci5jcml0e2JhY2tncm91bmQ6dmFyKC0tcmVkLWJnKTtib3JkZXI6MXB4IHNvbGlkIHZhcigtLXJlZC1iZHIpO2NvbG9yOnZhcigtLXJlZCl9Ci5tYWlue3BhZGRpbmc6MjBweCA0MHB4IDB9Ci5jbHVzdGVyLWJsb2Nre21hcmdpbi1ib3R0b206MzJweH0KLmNsdXN0ZXItaGVhZGluZ3tkaXNwbGF5OmZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2dhcDoxMHB4O21hcmdpbi1ib3R0b206MTBweH0KLmNsdXN0ZXItbmFtZXtmb250LWZhbWlseTp2YXIoLS1zYW5zKTtmb250LXNpemU6MTRweDtmb250LXdlaWdodDo3MDA7Y29sb3I6dmFyKC0tbWFnZW50YSk7bGV0dGVyLXNwYWNpbmc6MC4zcHh9Ci5jbHVzdGVyLXBpbGx7Zm9udC1zaXplOjEwcHg7YmFja2dyb3VuZDpyZ2JhKDE5MiwxMjgsMjQwLC4xKTtib3JkZXI6MXB4IHNvbGlkIHJnYmEoMTkyLDEyOCwyNDAsLjI1KTtjb2xvcjp2YXIoLS1tYWdlbnRhKTtib3JkZXItcmFkaXVzOjIwcHg7cGFkZGluZzoycHggOHB4fQouY2x1c3Rlci1waWxsLm9re2JhY2tncm91bmQ6dmFyKC0tZ3JlZW4tYmcpO2JvcmRlci1jb2xvcjp2YXIoLS1ncmVlbi1iZHIpO2NvbG9yOnZhcigtLWdyZWVuKX0KLmNsdXN0ZXItcGlsbC5jcml0e2JhY2tncm91bmQ6dmFyKC0tcmVkLWJnKTtib3JkZXItY29sb3I6dmFyKC0tcmVkLWJkcik7Y29sb3I6dmFyKC0tcmVkKX0KLmhiYS10YWJsZXt3aWR0aDoxMDAlO2JvcmRlci1jb2xsYXBzZTpjb2xsYXBzZTtib3JkZXI6MXB4IHNvbGlkIHZhcigtLWJvcmRlcjIpO2JvcmRlci1yYWRpdXM6NnB4O292ZXJmbG93OmhpZGRlbn0KLmhiYS10YWJsZSB0aGVhZCB0cntiYWNrZ3JvdW5kOnZhcigtLWJnMyk7Ym9yZGVyLWJvdHRvbToxcHggc29saWQgdmFyKC0tYm9yZGVyMil9Ci5oYmEtdGFibGUgdGh7cGFkZGluZzo5cHggMTRweDt0ZXh0LWFsaWduOmxlZnQ7Zm9udC1zaXplOjEwcHg7Zm9udC13ZWlnaHQ6NjAwO2xldHRlci1zcGFjaW5nOjAuOHB4O3RleHQtdHJhbnNmb3JtOnVwcGVyY2FzZTtjb2xvcjp2YXIoLS1hY2NlbnQpfQouaGJhLXRhYmxlIHRoLm51bXt0ZXh0LWFsaWduOnJpZ2h0fQouaGJhLXRhYmxlIHRib2R5IHRye2JvcmRlci1ib3R0b206MXB4IHNvbGlkIHZhcigtLWJvcmRlcik7dHJhbnNpdGlvbjpiYWNrZ3JvdW5kIDAuMTVzfQouaGJhLXRhYmxlIHRib2R5IHRyOmxhc3QtY2hpbGR7Ym9yZGVyLWJvdHRvbTpub25lfQouaGJhLXRhYmxlIHRib2R5IHRyOmhvdmVye2JhY2tncm91bmQ6cmdiYSgyNTUsMjU1LDI1NSwuMDI1KX0KLmhiYS10YWJsZSB0ZHtwYWRkaW5nOjlweCAxNHB4O2ZvbnQtc2l6ZToxMnB4O2NvbG9yOnZhcigtLXRleHQpfQouaGJhLXRhYmxlIHRkLm51bXt0ZXh0LWFsaWduOnJpZ2h0O2ZvbnQtd2VpZ2h0OjYwMH0KLnJvdy1va3tiYWNrZ3JvdW5kOnJnYmEoNjEsMjE0LDE0MCwuMDMpfS5yb3ctd2FybntiYWNrZ3JvdW5kOnJnYmEoMjQwLDE5Miw2NCwuMDQpfQoucm93LWRlYWR7YmFja2dyb3VuZDpyZ2JhKDI0MCw4MCw5NiwuMDUpfS5yb3ctbm9wYXRoe2JhY2tncm91bmQ6cmdiYSgyNDAsMTYwLDY0LC4wNCl9Ci5jaGlwe2Rpc3BsYXk6aW5saW5lLWZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2dhcDo0cHg7Ym9yZGVyLXJhZGl1czo0cHg7cGFkZGluZzoycHggN3B4O2ZvbnQtc2l6ZToxMXB4O2ZvbnQtd2VpZ2h0OjYwMH0KLmNoaXAuYWN0aXZle2JhY2tncm91bmQ6dmFyKC0tZ3JlZW4tYmcpO2JvcmRlcjoxcHggc29saWQgdmFyKC0tZ3JlZW4tYmRyKTtjb2xvcjp2YXIoLS1ncmVlbil9Ci5jaGlwLmRlYWR7YmFja2dyb3VuZDp2YXIoLS1yZWQtYmcpO2JvcmRlcjoxcHggc29saWQgdmFyKC0tcmVkLWJkcik7Y29sb3I6dmFyKC0tcmVkKX0KLmNoaXAuc3RhbmRieXtiYWNrZ3JvdW5kOnZhcigtLXllbGxvdy1iZyk7Ym9yZGVyOjFweCBzb2xpZCB2YXIoLS15ZWxsb3ctYmRyKTtjb2xvcjp2YXIoLS15ZWxsb3cpfQouY2hpcC56ZXJve2JhY2tncm91bmQ6dmFyKC0tYmczKTtib3JkZXI6MXB4IHNvbGlkIHZhcigtLWJvcmRlcik7Y29sb3I6dmFyKC0tdGV4dC1kaW0pfQouaG9zdC1jZWxse2Rpc3BsYXk6ZmxleDthbGlnbi1pdGVtczpjZW50ZXI7Z2FwOjhweH0KLmhvc3QtZG90e3dpZHRoOjZweDtoZWlnaHQ6NnB4O2JvcmRlci1yYWRpdXM6NTAlO2ZsZXgtc2hyaW5rOjB9Ci5ob3N0LWRvdC5va3tiYWNrZ3JvdW5kOnZhcigtLWdyZWVuKTtib3gtc2hhZG93OjAgMCA2cHggdmFyKC0tZ3JlZW4pfQouaG9zdC1kb3Qud2FybntiYWNrZ3JvdW5kOnZhcigtLXllbGxvdyk7Ym94LXNoYWRvdzowIDAgNnB4IHZhcigtLXllbGxvdyl9Ci5ob3N0LWRvdC5kZWFke2JhY2tncm91bmQ6dmFyKC0tcmVkKTtib3gtc2hhZG93OjAgMCA2cHggdmFyKC0tcmVkKX0KLmhiYS1kZXZpY2V7Zm9udC1mYW1pbHk6dmFyKC0tbW9ubyk7Zm9udC1zaXplOjExcHg7Y29sb3I6dmFyKC0tYWNjZW50Mik7YmFja2dyb3VuZDpyZ2JhKDYxLDE1NiwyNDAsLjA4KTtib3JkZXI6MXB4IHNvbGlkIHJnYmEoNjEsMTU2LDI0MCwuMik7Ym9yZGVyLXJhZGl1czo0cHg7cGFkZGluZzoxcHggNnB4fQoubGVnZW5ke2Rpc3BsYXk6ZmxleDtnYXA6MTZweDtmbGV4LXdyYXA6d3JhcDttYXJnaW46MjRweCA0MHB4IDA7cGFkZGluZzoxMnB4IDE2cHg7YmFja2dyb3VuZDp2YXIoLS1iZzIpO2JvcmRlcjoxcHggc29saWQgdmFyKC0tYm9yZGVyKTtib3JkZXItcmFkaXVzOjZweDtmb250LXNpemU6MTFweDtjb2xvcjp2YXIoLS10ZXh0LWRpbSk7YWxpZ24taXRlbXM6Y2VudGVyfQoubGVnZW5kLXRpdGxle2ZvbnQtd2VpZ2h0OjYwMDtjb2xvcjp2YXIoLS10ZXh0LWRpbSk7bGV0dGVyLXNwYWNpbmc6MC41cHg7dGV4dC10cmFuc2Zvcm06dXBwZXJjYXNlO2ZvbnQtc2l6ZToxMHB4fQoubGVnZW5kLWl0ZW17ZGlzcGxheTpmbGV4O2FsaWduLWl0ZW1zOmNlbnRlcjtnYXA6NnB4fQoucGFnZS1mb290ZXJ7bWFyZ2luOjMycHggNDBweCAwO3BhZGRpbmctdG9wOjE2cHg7Ym9yZGVyLXRvcDoxcHggc29saWQgdmFyKC0tYm9yZGVyKTtkaXNwbGF5OmZsZXg7anVzdGlmeS1jb250ZW50OnNwYWNlLWJldHdlZW47YWxpZ24taXRlbXM6Y2VudGVyO2ZvbnQtc2l6ZToxMXB4O2NvbG9yOnZhcigtLXRleHQtZGltKX0KLnBhZ2UtZm9vdGVyIGF7Y29sb3I6dmFyKC0tYWNjZW50KTt0ZXh0LWRlY29yYXRpb246bm9uZX0KLnRhYmxlLXdyYXB7b3ZlcmZsb3cteDphdXRvO2JvcmRlci1yYWRpdXM6NnB4fQo8L3N0eWxlPgo8L2hlYWQ+Cjxib2R5PiUlSEVBREVSJSUlJVNVTU1BUlklJSUlU1RBVFVTQkFOTkVSJSU8ZGl2IGNsYXNzPSJtYWluIj4lJUNMVVNURVJTJSU8L2Rpdj4lJUxFR0VORCUlPGZvb3RlciBjbGFzcz0icGFnZS1mb290ZXIiPjxzcGFuPkdldC1GQ0hCQVBhdGhTdGF0ZSB2Mi42ICZtaWRkb3Q7IDxhIGhyZWY9Imh0dHBzOi8vd3d3LmhvbGxlYm9sbGV2c2FuLm5sIiB0YXJnZXQ9Il9ibGFuayI+aG9sbGVib2xsZXZzYW4ubmw8L2E+ICZtaWRkb3Q7IFBhdWwgdmFuIERpZWVuPC9zcGFuPjxzcGFuPiUlR0VORVJBVEVEJSU8L3NwYW4+PC9mb290ZXI+CjwvYm9keT4KPC9odG1sPg=="
-    $template = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($templateB64))
+    $template = @"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get-FCHBAPathState - FC HBA Path Report</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap');
+:root{--bg:#0d0f14;--bg2:#12151c;--bg3:#181c26;--border:#252a38;--border2:#2e3448;--text:#c8cfe0;--text-dim:#5a6480;--text-head:#e8edf8;--accent:#3d9cf0;--accent2:#5ab4ff;--green:#3dd68c;--green-bg:rgba(61,214,140,.08);--green-bdr:rgba(61,214,140,.25);--yellow:#f0c040;--yellow-bg:rgba(240,192,64,.08);--yellow-bdr:rgba(240,192,64,.25);--red:#f05060;--red-bg:rgba(240,80,96,.08);--red-bdr:rgba(240,80,96,.30);--magenta:#c080f0;--mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.6;min-height:100vh;padding:0 0 60px}
+.page-header{background:var(--bg2);border-bottom:1px solid var(--border2);padding:28px 40px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px;position:relative;overflow:hidden}
+.page-header::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent) 0%,var(--magenta) 50%,var(--green) 100%)}
+.header-left{display:flex;flex-direction:column;gap:6px}
+.header-tool{font-family:var(--sans);font-size:22px;font-weight:800;color:var(--text-head);letter-spacing:-0.5px}
+.header-tool span{color:var(--accent2)}
+.header-subtitle{color:var(--text-dim);font-size:11px;letter-spacing:0.5px}
+.header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:11px;color:var(--text-dim)}
+.badge{display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:3px 8px;font-size:11px;color:var(--text-dim)}
+.badge.v{color:var(--accent);border-color:rgba(61,156,240,.3);background:rgba(61,156,240,.06)}
+.summary-bar{display:flex;gap:12px;padding:16px 40px;background:var(--bg2);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.stat-card{display:flex;flex-direction:column;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 18px;min-width:110px}
+.stat-label{font-size:10px;color:var(--text-dim);letter-spacing:0.8px;text-transform:uppercase}
+.stat-value{font-size:22px;font-weight:700;font-family:var(--sans);color:var(--text-head)}
+.stat-card.ok .stat-value{color:var(--green)}.stat-card.crit .stat-value{color:var(--red)}
+.status-banner{margin:20px 40px 0;border-radius:6px;padding:10px 16px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px}
+.status-banner.ok{background:var(--green-bg);border:1px solid var(--green-bdr);color:var(--green)}
+.status-banner.crit{background:var(--red-bg);border:1px solid var(--red-bdr);color:var(--red)}
+.main{padding:20px 40px 0}
+.cluster-block{margin-bottom:32px}
+.cluster-heading{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cluster-name{font-family:var(--sans);font-size:14px;font-weight:700;color:var(--magenta);letter-spacing:0.3px}
+.cluster-pill{font-size:10px;background:rgba(192,128,240,.1);border:1px solid rgba(192,128,240,.25);color:var(--magenta);border-radius:20px;padding:2px 8px}
+.cluster-pill.ok{background:var(--green-bg);border-color:var(--green-bdr);color:var(--green)}
+.cluster-pill.crit{background:var(--red-bg);border-color:var(--red-bdr);color:var(--red)}
+.hba-table{width:100%;border-collapse:collapse;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
+.hba-table thead tr{background:var(--bg3);border-bottom:1px solid var(--border2)}
+.hba-table th{padding:9px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--accent)}
+.hba-table th.num{text-align:right}
+.hba-table tbody tr{border-bottom:1px solid var(--border);transition:background 0.15s}
+.hba-table tbody tr:last-child{border-bottom:none}
+.hba-table tbody tr:hover{background:rgba(255,255,255,.025)}
+.hba-table td{padding:9px 14px;font-size:12px;color:var(--text)}
+.hba-table td.num{text-align:right;font-weight:600}
+.row-ok{background:rgba(61,214,140,.03)}.row-warn{background:rgba(240,192,64,.04)}
+.row-dead{background:rgba(240,80,96,.05)}.row-nopath{background:rgba(240,160,64,.04)}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600}
+.chip.active{background:var(--green-bg);border:1px solid var(--green-bdr);color:var(--green)}
+.chip.dead{background:var(--red-bg);border:1px solid var(--red-bdr);color:var(--red)}
+.chip.standby{background:var(--yellow-bg);border:1px solid var(--yellow-bdr);color:var(--yellow)}
+.chip.zero{background:var(--bg3);border:1px solid var(--border);color:var(--text-dim)}
+.host-cell{display:flex;align-items:center;gap:8px}
+.host-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.host-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.host-dot.warn{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.host-dot.dead{background:var(--red);box-shadow:0 0 6px var(--red)}
+.hba-device{font-family:var(--mono);font-size:11px;color:var(--accent2);background:rgba(61,156,240,.08);border:1px solid rgba(61,156,240,.2);border-radius:4px;padding:1px 6px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:24px 40px 0;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-dim);align-items:center}
+.legend-title{font-weight:600;color:var(--text-dim);letter-spacing:0.5px;text-transform:uppercase;font-size:10px}
+.legend-item{display:flex;align-items:center;gap:6px}
+.page-footer{margin:32px 40px 0;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-dim)}
+.page-footer a{color:var(--accent);text-decoration:none}
+.table-wrap{overflow-x:auto;border-radius:6px}
+</style>
+</head>
+<body>%%HEADER%%%%SUMMARY%%%%STATUSBANNER%%<div class="main">%%CLUSTERS%%</div>%%LEGEND%%<footer class="page-footer"><span>$($script:ScriptMeta.Name) v$($script:ScriptMeta.Version) &middot; <a href="$($script:ScriptMeta.Blog)" target="_blank">hollebollevsan.nl</a> &middot; $($script:ScriptMeta.Author)</span><span>%%GENERATED%%</span></footer>
+</body>
+</html>
+"@
 
     if ($totalDead -gt 0) {
         $statusClass = "crit"
@@ -152,7 +234,7 @@ function New-FCHBAHTMLReport {
     $headerHTML  = "<header class=`"page-header`"><div class=`"header-left`">"
     $headerHTML += "<div class=`"header-tool`">Get-FC<span>HBAPathState</span></div>"
     $headerHTML += "<div class=`"header-subtitle`">FC HBA Path State Report &middot; $VCenter</div></div>"
-    $headerHTML += "<div class=`"header-meta`"><span class=`"badge v`">v2.5</span>"
+    $headerHTML += "<div class=`"header-meta`"><span class=`"badge v`">v$($script:ScriptMeta.Version)</span>"
     $headerHTML += "<span class=`"badge`">Generated: $generatedAt</span></div></header>"
 
     $summaryHTML  = "<div class=`"summary-bar`">"
@@ -188,10 +270,12 @@ function New-FCHBAHTMLReport {
 
 # --- Banner ---
 Write-Host ""
-Write-Host "╔═══════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║     Get-FCHBAPathState  v2.6              ║" -ForegroundColor Cyan
-Write-Host "║     Paul van Dieen - hollebollevsan.nl    ║" -ForegroundColor Cyan
-Write-Host "╚═══════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host ("=" * 52) -ForegroundColor Cyan
+Write-Host ("  " + $ScriptMeta.Name + "  v" + $ScriptMeta.Version) -ForegroundColor Cyan
+Write-Host ("  " + $ScriptMeta.Author) -ForegroundColor Cyan
+Write-Host ("  " + $ScriptMeta.Blog) -ForegroundColor Cyan
+Write-Host ("  " + $ScriptMeta.Date) -ForegroundColor Cyan
+Write-Host ("=" * 52) -ForegroundColor Cyan
 Write-Host ""
 
 # --- vCenter prompt ---
@@ -434,4 +518,5 @@ if ($results.Count -eq 0) {
 Disconnect-VIServer * -Confirm:$false
 Write-Host ""
 Write-Host ("  Disconnected from " + $vCenter + ".") -ForegroundColor DarkGray
+Write-Host ("  " + $ScriptMeta.Blog) -ForegroundColor DarkGray
 Write-Host ""
