@@ -1,14 +1,16 @@
 # Get-FCHBAPathState
 
-> Audit Fibre Channel HBA path states across your entire VMware vCenter environment — per cluster, color-coded, with CSV and dark-mode HTML export.
+PowerShell script that audits Fibre Channel HBA path states across your entire VMware vCenter environment — per cluster, color-coded, with CSV and dark-mode HTML export.
+
+| Script | Version | Purpose |
+|---|---|---|
+| `Get-FCHBAPathState.ps1` | 2.6 | Connects to vCenter and reports Active, Dead, and Standby path counts per FC HBA, grouped by cluster |
 
 ---
 
-## Overview
+## What it does
 
-`Get-FCHBAPathState.ps1` connects to a vCenter Server and checks the **Active**, **Dead**, and **Standby** path counts for every Fibre Channel HBA on every connected ESXi host. Results are grouped by cluster with a color-coded console table and optional CSV and HTML exports.
-
-Key features:
+Connects to a vCenter Server and checks the **Active**, **Dead**, and **Standby** path counts for every Fibre Channel HBA on every connected ESXi host. Results are grouped by cluster with a color-coded console table and optional CSV and HTML exports.
 
 - **Auto-detects** all FC HBAs in the environment — no hardcoded device names
 - **Per-cluster output** with individual cluster summaries and an overall health total
@@ -40,41 +42,23 @@ Install-Module VMware.PowerCLI -Scope CurrentUser
 
 ## Usage
 
-### Basic — interactive, check all FC HBAs
-
 ```powershell
+# Interactive -- check all FC HBAs
 .\Get-FCHBAPathState.ps1
-```
 
-### Filter to specific HBAs
-
-```powershell
+# Filter to specific HBAs
 .\Get-FCHBAPathState.ps1 -HBAFilter "vmhba4,vmhba5"
-```
 
-### Export CSV (HTML report auto-generated alongside it)
-
-```powershell
+# Export CSV (HTML report auto-generated alongside it)
 .\Get-FCHBAPathState.ps1 -ExportPath "C:\Reports\FCHBAPathState.csv"
-# → C:\Reports\FCHBAPathState.csv
-# → C:\Reports\FCHBAPathState.html  (auto)
-```
 
-### Generate HTML report only
-
-```powershell
+# Generate HTML report only
 .\Get-FCHBAPathState.ps1 -HTMLReport "C:\Reports\FCHBAPathState.html"
-```
 
-### Rescan HBAs before collecting
-
-```powershell
+# Rescan HBAs before collecting
 .\Get-FCHBAPathState.ps1 -Rescan -ExportPath "C:\Reports\FCHBAPathState.csv"
-```
 
-### Fully automated (no prompts after first run)
-
-```powershell
+# Fully automated (no prompts after first run with saved credentials)
 .\Get-FCHBAPathState.ps1 -HBAFilter "vmhba4,vmhba5" -ExportPath "C:\Reports\out.csv"
 ```
 
@@ -93,21 +77,23 @@ Install-Module VMware.PowerCLI -Scope CurrentUser
 
 ---
 
-## Console Output
+## Console output
 
 ```
-  ╔═══════════════════════════════════════════╗
-  ║     Get-FCHBAPathState  v2.6              ║
-  ║     Paul van Dieen - hollebollevsan.nl    ║
-  ╚═══════════════════════════════════════════╝
+====================================================
+  Get-FCHBAPathState.ps1  v2.6
+  Paul van Dieen
+  https://www.hollebollevsan.nl
+  2026-03-19
+====================================================
 
   Cluster: Cluster-Production
   +----------------------+--------+--------+------+---------+
   | VMHost               | HBA    | Active | Dead | Standby |
   +----------------------+--------+--------+------+---------+
-  | esxi01.prod.local    | vmhba4 | 8      | 0    | 0       |   ← Green
-  | esxi02.prod.local    | vmhba4 | 6      | 2    | 0       |   ← Red
-  | esxi02.prod.local    | vmhba5 | 8      | 0    | 0       |   ← Green
+  | esxi01.prod.local    | vmhba4 | 8      | 0    | 0       |   <- Green
+  | esxi02.prod.local    | vmhba4 | 6      | 2    | 0       |   <- Red
+  | esxi02.prod.local    | vmhba5 | 8      | 0    | 0       |   <- Green
   +----------------------+--------+--------+------+---------+
   [!] 1 HBAs with dead paths in this cluster.
 
@@ -116,14 +102,14 @@ Install-Module VMware.PowerCLI -Scope CurrentUser
 
 | Color | Meaning |
 |---|---|
-| 🟢 Green | Active paths present, no issues |
-| 🔴 Red | One or more dead paths detected |
-| 🟡 Yellow | Standby paths only, no active paths |
-| 🟠 Dark Yellow | No paths found in any state |
+| Green | Active paths present, no issues |
+| Red | One or more dead paths detected |
+| Yellow | Standby paths only, no active paths |
+| Dark Yellow | No paths found in any state |
 
 ---
 
-## HTML Report
+## HTML report
 
 When `-ExportPath` or `-HTMLReport` is used, the script generates a self-contained dark-mode HTML report with:
 
@@ -137,7 +123,7 @@ The HTML file is fully standalone — no server or external runtime dependencies
 
 ---
 
-## Credential Store
+## Credential store
 
 On first run the script prompts for username and password directly in the console. You can choose to save them for future runs. Credentials are stored at:
 
@@ -155,11 +141,11 @@ Remove-Item "$env:USERPROFILE\.vcenter_creds"
 
 ---
 
-## Version History
+## Version history
 
 | Version | Date | Changes |
 |---|---|---|
-| 2.6 | 2026-03-19 | PS 5.1 compatibility fixes (UTF-8 BOM, character escaping); console credential prompts; single-file deployment |
+| 2.6 | 2026-03-19 | PS 5.1 compatibility fixes (UTF-8 BOM, character escaping); console credential prompts; HTML template converted from base64 to here-string; `$ScriptMeta` block as single source of truth for branding |
 | 2.5 | 2026-03-19 | Added `-HTMLReport` parameter; dark-mode HTML report auto-generated alongside CSV |
 | 2.4 | 2026-03-06 | Per-cluster output tables with cluster summaries and overall total |
 | 2.3 | 2026-03-06 | Colored console table, dynamic column widths, summary line, legend |
@@ -170,7 +156,13 @@ Remove-Item "$env:USERPROFILE\.vcenter_creds"
 
 ---
 
+## Blog post
+
+Full write-up with background and screenshots:
+[hollebollevsan.nl](https://www.hollebollevsan.nl)
+
+---
+
 ## Author
 
-**Paul van Dieen**
-[hollebollevsan.nl](https://www.hollebollevsan.nl)
+Paul van Dieen — [hollebollevsan.nl](https://www.hollebollevsan.nl)
