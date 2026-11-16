@@ -4,7 +4,7 @@ PowerShell script that audits Fibre Channel HBA path states across your entire V
 
 | Script | Version | Purpose |
 |---|---|---|
-| `Get-FCHBAPathState.ps1` | 2.6 | Connects to vCenter and reports Active, Dead, and Standby path counts per FC HBA, grouped by cluster |
+| `Get-FCHBAPathState.ps1` | 2.7 | Connects to vCenter and reports Active, Dead, and Standby path counts per FC HBA, grouped by cluster |
 
 ---
 
@@ -28,11 +28,11 @@ Connects to a vCenter Server and checks the **Active**, **Dead**, and **Standby*
 | Requirement | Detail |
 |---|---|
 | PowerShell | 5.1 or 7+ |
-| VMware PowerCLI | 12.x or 13.x (`VMware.VimAutomation.Core`) |
+| PowerCLI | `VMware.VimAutomation.Core`: VMware.PowerCLI 12.x / 13.x, or VCF.PowerCLI 9.x (needs PowerShell 7, [KB 409981](https://knowledge.broadcom.com/external/article/409981)) |
 | vCenter | vCenter Server 7.x / 8.x |
 | Permissions | Read access to hosts and storage |
 
-Install PowerCLI if not already present:
+Install PowerCLI if not already present (one PowerCLI version per host; setting up a jump host, with or without internet access: [Jump Host: PowerShell 7 and VCF PowerCLI](https://vcf-planning.hollebollevsan.nl/docs/42-jump-host-powershell/)):
 
 ```powershell
 Install-Module VMware.PowerCLI -Scope CurrentUser
@@ -145,6 +145,7 @@ Remove-Item "$env:USERPROFILE\.vcenter_creds"
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.7 | 2026-11-16 | PowerCLI loading: `Import-Module` with `-ErrorAction Stop` instead of silently continuing; stops on mixed PowerCLI versions already loaded; clear error with loaded modules and jump-host guide link (#1) |
 | 2.6 | 2026-03-19 | PS 5.1 compatibility fixes (UTF-8 BOM, character escaping); console credential prompts; HTML template converted from base64 to here-string; `$ScriptMeta` block as single source of truth for branding |
 | 2.5 | 2026-03-19 | Added `-HTMLReport` parameter; dark-mode HTML report auto-generated alongside CSV |
 | 2.4 | 2026-03-06 | Per-cluster output tables with cluster summaries and overall total |
