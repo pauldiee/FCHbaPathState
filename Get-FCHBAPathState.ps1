@@ -23,20 +23,31 @@
 .PARAMETER Rescan
     Optional switch. Rescans all HBAs before collecting data.
 
+.PARAMETER SkipCertificateValidation
+    Optional switch. Accept a vCenter with an untrusted (self-signed)
+    certificate, for this PowerShell session only. For labs; in production,
+    make the vCenter certificate trusted instead.
+
 .EXAMPLE
     .\Get-FCHBAPathState.ps1
     .\Get-FCHBAPathState.ps1 -HBAFilter "vmhba4,vmhba5"
     .\Get-FCHBAPathState.ps1 -ExportPath "C:\Reports\out.csv" -Rescan
     .\Get-FCHBAPathState.ps1 -HTMLReport "C:\Reports\out.html"
+    .\Get-FCHBAPathState.ps1 -SkipCertificateValidation
 
 .NOTES
     Script  : Get-FCHBAPathState.ps1
-    Version : 2.7
+    Version : 2.8
     Author  : Paul van Dieen
     Blog    : https://www.hollebollevsan.nl
-    Date    : 2026-11-16
+    Date    : 2026-11-18
 
     Changelog:
+    2.8  (2026-11-18) - Added -SkipCertificateValidation: sets
+                         InvalidCertificateAction Ignore for this session
+                         only, so a vCenter with an untrusted certificate
+                         can be used (lab). Without the switch the PowerCLI
+                         configuration is left as it is (#3).
     2.7  (2026-11-16) - PowerCLI loading: imports VMware.VimAutomation.Core with
                          -ErrorAction Stop (a failed import was swallowed);
                          stops when PowerCLI modules of different versions
@@ -60,16 +71,17 @@ param(
     [string]$HBAFilter  = "",
     [string]$ExportPath = "",
     [string]$HTMLReport = "",
-    [switch]$Rescan
+    [switch]$Rescan,
+    [switch]$SkipCertificateValidation
 )
 
 # --- Script metadata ---
 $ScriptMeta = @{
     Name    = "Get-FCHBAPathState.ps1"
-    Version = "2.7"
+    Version = "2.8"
     Author  = "Paul van Dieen"
     Blog    = "https://www.hollebollevsan.nl"
-    Date    = "2026-11-16"
+    Date    = "2026-11-18"
 }
 
 # --- PowerCLI check ---
@@ -368,6 +380,11 @@ if ($savedCred) {
 # --- Connect ---
 Write-Host ""
 Write-Host "  Connecting to $vCenter ..." -ForegroundColor Cyan
+if ($SkipCertificateValidation) {
+    # Session scope only: never change the user's PowerCLI configuration.
+    $null = Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Scope Session -Confirm:$false
+    Write-Host "  Certificate validation skipped for this session (-SkipCertificateValidation)." -ForegroundColor Yellow
+}
 try {
     Connect-VIServer -Server $vCenter -Credential $cred -ErrorAction Stop | Out-Null
     Write-Host "  Connected successfully." -ForegroundColor Green
