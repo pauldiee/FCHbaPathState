@@ -4,7 +4,7 @@ PowerShell script that audits Fibre Channel HBA path states across your entire V
 
 | Script | Version | Purpose |
 |---|---|---|
-| `Get-FCHBAPathState.ps1` | 2.7 | Connects to vCenter and reports Active, Dead, and Standby path counts per FC HBA, grouped by cluster |
+| `Get-FCHBAPathState.ps1` | 2.8 | Connects to vCenter and reports Active, Dead, and Standby path counts per FC HBA, grouped by cluster |
 
 ---
 
@@ -74,6 +74,7 @@ Install-Module VMware.PowerCLI -Scope CurrentUser
 | `-ExportPath` | `string` | No | Full path for CSV output. A dark-mode HTML report is auto-generated at the same path with a `.html` extension. |
 | `-HTMLReport` | `string` | No | Full path for a standalone dark-mode HTML report, independent of `-ExportPath`. |
 | `-Rescan` | `switch` | No | Triggers `Get-VMHostStorage -RescanAllHba` on each host before data collection. |
+| `-SkipCertificateValidation` | `switch` | No | Accepts a vCenter with an untrusted (self-signed) certificate, for this PowerShell session only. For labs; in production, make the vCenter certificate trusted instead. |
 
 ---
 
@@ -145,6 +146,7 @@ Remove-Item "$env:USERPROFILE\.vcenter_creds"
 
 | Version | Date | Changes |
 |---|---|---|
+| 2.8 | 2026-11-18 | Added `-SkipCertificateValidation` (session-scope `InvalidCertificateAction Ignore`) for vCenters with an untrusted certificate; without it the PowerCLI configuration is left alone (#3) |
 | 2.7 | 2026-11-16 | PowerCLI loading: `Import-Module` with `-ErrorAction Stop` instead of silently continuing; stops on mixed PowerCLI versions already loaded; clear error with loaded modules and jump-host guide link (#1) |
 | 2.6 | 2026-03-19 | PS 5.1 compatibility fixes (UTF-8 BOM, character escaping); console credential prompts; HTML template converted from base64 to here-string; `$ScriptMeta` block as single source of truth for branding |
 | 2.5 | 2026-03-19 | Added `-HTMLReport` parameter; dark-mode HTML report auto-generated alongside CSV |
